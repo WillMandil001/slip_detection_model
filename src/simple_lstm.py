@@ -21,12 +21,13 @@ sequence_length = 16
 context_epochs = 1
 context_batch_size = 1
 context_learning_rate = 1e-3
-context_test_train_split = 0.9  # precentage of train data from total
+
+test_train_split = 0.9  # precentage of train data from total
 
 torch.manual_seed(seed)
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")#  use gpu if available
 
 class ContextAutoEncoder(nn.Module):
 	def __init__(self, **kwargs):
@@ -77,67 +78,85 @@ class ContextAutoEncoder(nn.Module):
 
 
 class Feedforward(torch.nn.Module):
-        def __init__(self, input_size, hidden_size, output_size):
-            super(Feedforward, self).__init__()
-            self.input_size  = input_size
-            self.hidden_size = hidden_size
-            self.output_size = output_size
-            self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
-            self.relu1 = torch.nn.ReLU()
-            self.fc2 = torch.nn.Linear(self.hidden_size, self.output_size)
-            self.relu2 = torch.nn.ReLU()
+		def __init__(self, input_size, hidden_size, output_size):
+			super(Feedforward, self).__init__()
+			self.input_size  = input_size
+			self.hidden_size = hidden_size
+			self.output_size = output_size
+			self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
+			self.relu1 = torch.nn.ReLU()
+			self.fc2 = torch.nn.Linear(self.hidden_size, self.output_size)
+			self.relu2 = torch.nn.ReLU()
 
-        def forward(self, x):
-            hidden = self.fc1(x)
-            relu = self.relu1(hidden)
-            output = self.fc2(relu)
-            output = self.relu2(output)
-            return output
+		def forward(self, x):
+			hidden = self.fc1(x)
+			relu = self.relu1(hidden)
+			output = self.fc2(relu)
+			output = self.relu2(output)
+			return output
 
-
-class FullModel:
+class FullModelTest(nn.Module):
 	def __init__(self):
-		self.lstm1 = nn.LSTM(48*2, 48)  # Input dim is 48, output dim is 48
-		self.loss_function = nn.MSELoss()
-		self.optimizer = optim.SGD(self.lstm1.parameters(), lr=learning_rate)
-		self.ff1 = Feedforward(input_size=3, hidden_size=48, output_size=48)
+		super(FullModelTest, self).__init__()
+		self.lstm1 = nn.LSTM(48, 48).to(device)
+		self.lstm2 = nn.LSTM(48*2, 48*2).to(device)  # Context + Tactle
+		self.ff1 = Feedforward(input_size=3, hidden_size=48, output_size=48).to(device) # actions
+		self.lstm3 = nn.LSTM(48*3, 48*3).to(device)
+		self.ff2 = Feedforward(input_size=144, hidden_size=144, output_size=96).to(device)
+		self.ff3 = Feedforward(input_size=96, hidden_size=96, output_size=48).to(device)
+		self.lstm4 = nn.LSTM(48, 48).to(device)
 
-	def forward_concat_actions(self, tactile, actions):
-		hidden = (torch.rand(1,1,48), torch.rand(1,1,48))
+	def forward(self, tactiles, actions, context):
 		outputs = []
-		for index, (sample_tactile, sample_action) in enumerate(zip(tactile.squeeze(), actions.squeeze())):
-			# 1. Feed action values into simple feedforward module:
-			action_ouput = self.ff1.forward(sample_action.unsqueeze(0).view(1,1,-1).cpu().detach())
+		hidden1 = (torch.rand(1,batch_size,48).to(device), torch.rand(1,batch_size,48).to(device))
+		hidden2 = (torch.rand(1,batch_size,48*2).to(device), torch.rand(1,batch_size,48*2).to(device))
+		hidden3 = (torch.rand(1,batch_size,48*3).to(device), torch.rand(1,batch_size,48*3).to(device))
+		hidden4 = (torch.rand(1,batch_size,48).to(device), torch.rand(1,batch_size,48).to(device))
 
-			# 3. Run through lstm:
+		for index, (sample_tactile, sample_action, sample_context) in enumerate(zip(tactiles.squeeze(), actions.squeeze(), context)):
+			sample_tactile.to(device)
+			sample_action.to(device)
+			sample_context.to(device)
+			print(sample_tactile.shape)
+			print(sample_action.shape)
+			print(sample_context.shape)
+			# 1. Run Actions through FFN:
+			action_ouput = self.ff1.forward(sample_action.unsqueeze(0).view(1,1,-1))
+
+			# 2. Run through lstm:
 			if index > context_frames-1:
-				# 2. Concat the action module output with the tactile data: 
-				action_tactile = torch.cat((action_ouput.cpu().detach(), out), 0)
-				out, hidden = self.lstm1(action_tactile.unsqueeze(0).view(1,1,-1).cpu().detach(), hidden)
-			else:
-				# 2. Concat the action module output with the tactile data: 
-				action_tactile = torch.cat((action_ouput.squeeze(0), sample_tactile.unsqueeze(0).cpu().detach()), 0)
-				out, hidden = self.lstm1(action_tactile.unsqueeze(0).view(1,1,-1).cpu().detach(), hidden)
-			outputs.append(out.squeeze())
+				out1, hidden1 = self.lstm1(out6.unsqueeze(0).view(1,1,-1), hidden1)
+				context_and_tactile = torch.cat((sample_context, out1.squeeze()), 0)
+				out2, hidden2 = self.lstm2(context_and_tactile.unsqueeze(0).view(1,1,-1), hidden2)
+		
+				action_tactile = torch.cat((action_ouput.squeeze(), out2.squeeze()), 0)
+				out3, hidden3 = self.lstm3(action_tactile.unsqueeze(0).view(1,1,-1), hidden3)
 
-		return torch.stack(outputs)
-
-	def forward(self, tactile):
-		hidden = (torch.rand(1,1,48), torch.rand(1,1,48))
-		outputs = []
-		for index, sample in enumerate(tactile.squeeze()):
-			if index > context_frames-1:
-				out, hidden = self.lstm1(out, hidden)
+				# scale back down to 48 length vector for output
+				out4 = self.ff2.forward(out3.view(1,1,-1))
+				out5 = self.ff3.forward(out4.view(1,1,-1))
+				# final LSTM
+				out6, hidden4 = self.lstm4(out5.view(1,1,-1), hidden4)
 			else:
-				out, hidden = self.lstm1(sample.unsqueeze(0).view(1,1,-1).cpu().detach(), hidden)
-			outputs.append(out.squeeze())
+				out1, hidden1 = self.lstm1(sample_tactile.unsqueeze(0).view(1,1,-1), hidden1)
+				context_and_tactile = torch.cat((sample_context, out1.squeeze()), 0)
+				out2, hidden2 = self.lstm2(context_and_tactile.unsqueeze(0).view(1,1,-1), hidden2)
+		
+				action_tactile = torch.cat((action_ouput.squeeze(), out2.squeeze()), 0)
+				out3, hidden3 = self.lstm3(action_tactile.unsqueeze(0).view(1,1,-1), hidden3)
+
+				# scale back down to 48 length vector for output
+				out4 = self.ff2.forward(out3.view(1,1,-1))
+				out5 = self.ff3.forward(out4.view(1,1,-1))
+				# final LSTM
+				out6, hidden4 = self.lstm4(out5.view(1,1,-1), hidden4)
+			outputs.append(out6.squeeze())
 		return torch.stack(outputs)
 
 
 class ModelTrainer:
-	def __init__(self, BG, device, logger):
+	def __init__(self, BG, logger):
 		self.BG = BG
-		self.device = device
 		## Train the context model:
 		self.context_model = ContextAutoEncoder(input_shape=20*48, logger=logger).to(device)
 		self.context_optimizer = optim.Adam(self.context_model.parameters(), lr=learning_rate)  # create an optimizer object || Adam optimizer with learning rate 1e-3
@@ -149,7 +168,9 @@ class ModelTrainer:
 
 		### Train the LSTM chain:
 		self.train_full_loader, self.test_full_loader = self.BG.load_full_data()
-		self.full_model = FullModel()
+		self.full_model = FullModelTest()
+		self.criterion = nn.MSELoss()
+		self.optimizer = optim.Adam(self.full_model.parameters(), lr=learning_rate)
 		self.train_full_model()
 
 	def train_full_model(self):
@@ -161,7 +182,7 @@ class ModelTrainer:
 				# 1. Calculate context model: 
 				context_data_list = []
 				for context_data in batch_features[0]:
-					context = context_data.view(-1, 20*48).to(self.device)
+					context = context_data.view(-1, 20*48).to(device)
 					context = self.context_model.encoder(context)  # [0]
 					context_list = []
 					for sequence in range(sequence_length):
@@ -171,19 +192,23 @@ class ModelTrainer:
 				context_data_list = torch.FloatTensor(context_data_list)
 
 				# 2. Reshape data and send to device:
-				context = context_data_list.to(self.device)
-				tactile = batch_features[1].to(self.device)
-				action = batch_features[2].to(self.device)
-				state = batch_features[3].to(self.device)
+				context = context_data_list.permute(1,0,2).to(device)
+				tactile = batch_features[1].permute(1,0,2).to(device)
+				action = batch_features[2].permute(1,0,2).to(device)
+				state = batch_features[3].permute(1,0,2).to(device)
 
-				self.full_model.lstm1.zero_grad()  # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
-				tactile_predictions = self.full_model.forward_concat_actions(tactile=tactile, actions=action)  # Step 3. Run our forward pass.
-				loss = self.full_model.loss_function(tactile_predictions.unsqueeze(0).to(self.device), tactile)  # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+				tactile_predictions = self.full_model.forward(tactiles=tactile, actions=action, context=context)  # Step 3. Run our forward pass.
+				self.optimizer.zero_grad()
+				loss = self.criterion(tactile_predictions.unsqueeze(0).to(device), tactile)
 				loss.backward()
-				self.full_model.optimizer.step()
+				self.optimizer.step()
 
-				losses += loss
-				progress_bar.set_description("epoch: {}, ".format(epoch) + "loss: {:.4f}, ".format(float(loss)) + "mean loss: {:.4f}, ".format(losses / index))
+				losses += loss.item()
+				if index:
+					mean = losses / index
+				else:
+					mean = 0
+				progress_bar.set_description("epoch: {}, ".format(epoch) + "loss: {:.4f}, ".format(float(loss.item())) + "mean loss: {:.4f}, ".format(mean))
 				progress_bar.update()
 			print("mean loss: {:.4f}, ".format(losses / index))
 
@@ -192,7 +217,7 @@ class ModelTrainer:
 		for context_epoch in range(context_epochs):
 			loss = 0
 			for batch_features in self.train_context_loader:
-				batch_features = batch_features.view(-1, 20*48).to(self.device)  # reshape mini-batch data to [N, 784] matrix load it to the active device
+				batch_features = batch_features.view(-1, 20*48).to(device)  # reshape mini-batch data to [N, 784] matrix load it to the active device
 				self.context_optimizer.zero_grad()  # reset the gradients back to zero PyTorch accumulates gradients on subsequent backward passes
 				outputs = self.context_model(batch_features)  # compute reconstructions
 				train_loss = self.context_criterion(outputs, batch_features)  # compute training reconstruction loss
@@ -207,7 +232,7 @@ class ModelTrainer:
 		loss = 0
 		with torch.no_grad():
 			for batch_features in self.test_context_loader:
-				test_examples = batch_features.view(-1, 20*48).to(self.device)
+				test_examples = batch_features.view(-1, 20*48).to(device)
 				reconstruction = self.context_model(test_examples)
 				train_loss = self.context_criterion(reconstruction, test_examples)
 				loss += train_loss.item()
@@ -260,9 +285,9 @@ class ContextDataSet():
 				context_file_names.append(value[8])
 				context_data.append(np.load(data_dir + value[8]))
 		if train:
-			self.samples = context_data[0:int(len(context_data)*context_test_train_split)]
+			self.samples = context_data[0:int(len(context_data)*test_train_split)]
 		else:
-			self.samples = context_data[int(len(context_data)*context_test_train_split):-1]
+			self.samples = context_data[int(len(context_data)*test_train_split):-1]
 		data_map = None
 
 	def __len__(self):
@@ -275,16 +300,16 @@ class ContextDataSet():
 class FullDataSet():
 	def __init__(self, data_dir, data_map, train=True):
 		dataset_full = []
-		for value in data_map[1:]:  # ignore header
+		for value in data_map[1:50]:  # ignore header
 			state = np.float32(np.load(data_dir + '/' + value[4]))
 			dataset_full.append([np.load(data_dir + value[8]),
 								 np.float32(np.load(data_dir + '/' + value[2])),
 								 np.float32(np.load(data_dir + '/' + value[3])),
 								 np.asarray([state[0] for i in range(0, len(state))])])
 		if train:
-			self.samples = dataset_full[0:int(len(dataset_full)*context_test_train_split)]
+			self.samples = dataset_full[0:int(len(dataset_full)*test_train_split)]
 		else:
-			self.samples = dataset_full[int(len(dataset_full)*context_test_train_split):-1]
+			self.samples = dataset_full[int(len(dataset_full)*test_train_split):-1]
 		data_map = None
 
 	def __len__(self):
@@ -298,10 +323,9 @@ class FullDataSet():
 @click.option('--data_dir', type=click.Path(exists=True), default='/home/user/Robotics/Data_sets/slip_detection/vector_normalised_001/', help='Directory containing data.')
 def main(data_dir):
 	logger = logging.getLogger(__name__)
-	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")#  use gpu if available
 
 	BG = BatchGenerator(data_dir, logger)
-	MT = ModelTrainer(BG, device, logger)
+	MT = ModelTrainer(BG, logger)
 
 
 if __name__ == '__main__':
