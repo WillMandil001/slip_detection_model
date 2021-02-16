@@ -96,8 +96,8 @@ class DataFormatter():
 					robot_positions__.append(self.convert_to_state(robot_positions_files[j+t]))  # Convert from HTM to euler task space and quaternion orientation. [[was just [t]]]]
 					images.append(self.create_sample(images_new_sample[j+t]))
 					images_labels.append(images_new_sample[j+t+1])  # [video location, frame]
-					slip_labels_sample__.append(slip_labels_sample[j+t][2])    
-				self.process_data_sample(index, np.asarray([state for state in robot_positions__]), np.asarray(images), np.asarray(slip_labels_sample__), np.asarray(context_data), context_written, context_index)
+					slip_labels_sample__.append(slip_labels_sample[j+t][2])
+				self.process_data_sample(index, np.asarray([state for state in robot_positions__]), np.asarray(images), np.asarray(slip_labels_sample__), np.asarray(context_data), context_written, context_index, j)
 				context_written = 1
 				index += 1
 			context_index += 1
@@ -140,7 +140,7 @@ class DataFormatter():
 		state = [pose[16], pose[17], pose[18]]
 		return state
 
-	def process_data_sample(self, index, robot_positions, image_names, slip_labels, context_data, context_written, context_index):
+	def process_data_sample(self, index, robot_positions, image_names, slip_labels, context_data, context_written, context_index, time_step):
 		raw = []
 		for k in range(len(image_names)):
 			tmp = image_names[k].astype(np.float32)
@@ -176,6 +176,7 @@ class DataFormatter():
 		ref.append('')
 		ref.append('slip_label_batch_' + str(index) + '.npy')
 		ref.append('context_data_' + str(context_index) + '.npy')
+		ref.append('sample_time_step_' + str(time_step))
 
 		### Append all file names for this sample to CSV file for training.
 		self.csv_ref.append(ref)
@@ -185,7 +186,7 @@ class DataFormatter():
 		self.logger.info("Writing the results into map file '{0}'".format('map.csv'))
 		with open(self.out_dir + '/map.csv', 'w') as csvfile:
 			writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-			writer.writerow(['id', 'img_bitmap_path', 'img_np_path', 'action_np_path', 'state_np_path', 'img_bitmap_pred_path', 'img_np_pred_path', 'slip_label', 'context_data'])
+			writer.writerow(['id', 'img_bitmap_path', 'img_np_path', 'action_np_path', 'state_np_path', 'img_bitmap_pred_path', 'img_np_pred_path', 'slip_label', 'context_data', 'sample_time_step'])
 			for row in self.csv_ref:
 				writer.writerow(row)
 
