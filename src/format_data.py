@@ -81,7 +81,7 @@ class DataFormatter():
 			robot_positions_files = np.asarray([robot_positions_new_sample[j*frequency_rate] for j in range(1, min(len(images_new_sample), int(len(robot_positions_new_sample)/frequency_rate)))])
 			images_new_sample = images_new_sample[1:len(robot_positions_files)+1]
 			slip_labels_sample = np.asarray(pd.read_csv(slip_labels_files[i], header=None)[1:])
-			
+
 			context_data = []
 			context_written = 0
 			for k in range(0, self.context_data_length):  # create context data for each sample: 
@@ -135,9 +135,8 @@ class DataFormatter():
 
 		return [normal_min, normal_max, sheerx_min, sheerx_max, sheery_min, sheery_max]
 
-
 	def convert_to_state(self, pose):
-		state = [pose[16], pose[17], pose[18]]
+		state = [pose[16], pose[17], pose[18], pose[-3], pose[-2], pose[-1]]
 		return state
 
 	def process_data_sample(self, index, robot_positions, image_names, slip_labels, context_data, context_written, context_index, time_step):
