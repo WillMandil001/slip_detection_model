@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 from string import digits
 
@@ -18,8 +19,8 @@ import torchvision
 import torch.nn.functional as F
 
 seed = 42
-epochs = 20
-batch_size = 32
+epochs = 200
+batch_size = 64
 learning_rate = 1e-3
 
 lookback = 20
@@ -70,6 +71,13 @@ class DataFormatter():
                 output_y.append(y[i+lookback+1])
             return output_X, output_y
 
+        # remove nan values from data samples
+        indexes_to_delete = []
+        for index, values in enumerate(robot_data):
+            if np.isnan(values).any():
+                indexes_to_delete.append(index)
+        tactile_data = np.delete(tactile_data, indexes_to_delete, 0)
+        robot_data = np.delete(robot_data, indexes_to_delete, 0)
 
         # Temporalize the data
         X_tactile, y = temporalize(X = tactile_data[:-lookback], y = Y, lookback = lookback)
@@ -77,9 +85,9 @@ class DataFormatter():
         label, rr = temporalize(X = tactile_data[lookback:], y = Y, lookback = lookback)
 
         #split data into train, validation and test set
-        X_tactile_train, X_tactile_test, y_train, y_test = train_test_split(np.array(X_tactile), np.array(y), test_size=DATA_SPLIT_PCT, random_state=SEED)
-        label_train, label_test, rr_train, rr_test = train_test_split(np.array(label), np.array(rr), test_size=DATA_SPLIT_PCT, random_state=SEED)
-        X_robot_trajectory_train, X_robot_trajectory_test, zq_train, zq_test = train_test_split(np.array(X_robot_trajectory), np.array(zq), test_size=DATA_SPLIT_PCT, random_state=SEED)
+        X_tactile_train, X_tactile_test, y_train, y_test = train_test_split(np.array(X_tactile), np.array(y), test_size=DATA_SPLIT_PCT, random_state=SEED, shuffle=False)
+        label_train, label_test, rr_train, rr_test = train_test_split(np.array(label), np.array(rr), test_size=DATA_SPLIT_PCT, random_state=SEED, shuffle=False)
+        X_robot_trajectory_train, X_robot_trajectory_test, zq_train, zq_test = train_test_split(np.array(X_robot_trajectory), np.array(zq), test_size=DATA_SPLIT_PCT, random_state=SEED, shuffle=False)
 
         X_tactile_train, X_tactile_valid, y_train, y_valid = train_test_split(X_tactile_train, y_train, test_size=DATA_SPLIT_PCT, random_state=SEED)
         X_robot_trajectory_train, X_robot_trajectory_valid, zq_train, zq_valid = train_test_split(X_robot_trajectory_train, zq_train, test_size=DATA_SPLIT_PCT, random_state=SEED)
@@ -122,6 +130,7 @@ class DataFormatter():
                 flattened_X[i] = X[i, (X.shape[1]-1), :]
             return(flattened_X)
 
+
         def scale(X, scaler):
             '''
             Scale 3D array.
@@ -136,10 +145,16 @@ class DataFormatter():
                 
             return X
 
-
         # Initialize a scaler using the training data.
-        scaler_tactile = StandardScaler().fit(flatten(X_tactile_train))
-        scaler_robot = StandardScaler().fit(flatten(X_robot_trajectory_train))
+        scaler_test_tactiles  = np.concatenate((np.asarray(flatten(X_tactile_train)), np.asarray(flatten(X_tactile_valid)),
+                                                np.asarray(flatten(X_tactile_test)), np.asarray(flatten(label_train)), 
+                                                np.asarray(flatten(label_valid)), np.asarray(flatten(label_test))), axis=0).tolist()
+        scaler_test_robot  = np.concatenate((np.asarray(flatten(X_robot_trajectory_train)),
+                                                np.asarray(flatten(X_robot_trajectory_valid)),
+                                                np.asarray(flatten(X_robot_trajectory_test))), axis=0).tolist()
+
+        scaler_robot = MinMaxScaler().fit(scaler_test_robot)
+        scaler_tactile = MinMaxScaler().fit(scaler_test_tactiles)
 
         X_tactile_train_scaled = scale(X_tactile_train, scaler_tactile)
         X_tactile_valid_scaled = scale(X_tactile_valid, scaler_tactile)
@@ -152,17 +167,6 @@ class DataFormatter():
         label_train_scaled = scale(label_train, scaler_tactile)
         label_valid_scaled = scale(label_valid, scaler_tactile)
         label_test_scaled = scale(label_test, scaler_tactile)
-
-        a = flatten(X_tactile_train_scaled)
-        print('colwise mean', np.mean(a, axis=0).round(6))
-        print('colwise variance', np.var(a, axis=0))
-        a = flatten(X_robot_trajectory_train_scaled)
-        print('colwise mean', np.mean(a, axis=0).round(6))
-        print('colwise variance', np.var(a, axis=0))
-        a = flatten(label_train_scaled)
-        print('colwise mean', np.mean(a, axis=0).round(6))
-        print('colwise variance', np.var(a, axis=0))
-
 
         dataset_train = FullDataSet(X_tactile_train_scaled, X_robot_trajectory_train_scaled, label_train_scaled)
         dataset_valid = FullDataSet(X_tactile_valid_scaled, X_robot_trajectory_valid_scaled, label_valid_scaled)
@@ -198,9 +202,11 @@ class ModelTrainer:
         self.criterion = nn.L1Loss()
         self.optimizer = optim.Adam(self.full_model.parameters(), lr=learning_rate)
         self.train_full_model()
+        torch.save(self.full_model.state_dict(), "simple_lstm_001.pt")
 
     def train_full_model(self):
-        previous_test_mean_loss = 1.0
+        early_stop_count = 0
+        previous_validation_mean_loss = 1.0
         progress_bar = tqdm.tqdm(range(0, epochs), total=(epochs*len(self.train_loader)))
         mean_test = 0
         for epoch in progress_bar:
@@ -208,19 +214,13 @@ class ModelTrainer:
             losses = 0.0
             for index, batch_features in enumerate(self.train_loader):
                 # 2. Reshape data and send to device:
-                tactile = batch_features[0].permute(1,0,2).to(device)
-                action = batch_features[1].permute(1,0,2).to(device)
-                label = batch_features[2].permute(1,0,2).to(device)
-
-                print(tactile[0][0][0])
-                print(action[0][0][0])
-                print(label[0][0][0])
+                tactile = batch_features[0].type(torch.FloatTensor).permute(1,0,2).to(device)
+                action = batch_features[1].type(torch.FloatTensor).permute(1,0,2).to(device)
+                label = batch_features[2].type(torch.FloatTensor).permute(1,0,2).to(device)
 
                 tactile_predictions = self.full_model.forward(tactiles=tactile, actions=action)  # Step 3. Run our forward pass.
                 self.optimizer.zero_grad()
-                print(tactile_predictions.shape)
-                print(label.shape)
-                loss = self.criterion(tactile_predictions.unsqueeze(0).to(device), label)
+                loss = self.criterion(tactile_predictions.to(device), label)
                 loss.backward()
                 self.optimizer.step()
 
@@ -231,49 +231,40 @@ class ModelTrainer:
                     mean = 0
                 progress_bar.set_description("epoch: {}, ".format(epoch) + "loss: {:.4f}, ".format(float(loss.item())) + "mean loss: {:.4f}, ".format(mean))
                 progress_bar.update()
-            # print("Training mean loss: {:.4f}, ".format(losses / index))
 
-            # test_losses = 0.0
-            # test_loss = 0.0
-            # with torch.no_grad():
-            #     for index__, batch_features in enumerate(self.test_full_loader):
-            #         # 1. Calculate context model: 
-            #         context_data_list = []
-            #         for context_data in batch_features[0]:
-            #             context = context_data.view(-1, context_epochs*48).to(device)
-            #             context = self.context_model.encoder(context)  # [0]
-            #             context_list = []
-            #             for sequence in range(sequence_length):
-            #                 context_list.append(context.cpu().detach().numpy())
-            #             context_data_list.append(context_list)
-            #         context_data_list = np.asarray(context_data_list).squeeze()
-            #         context_data_list = torch.FloatTensor(context_data_list)
+            validation_losses = 0.0
+            validation_loss = 0.0
+            with torch.no_grad():
+                for index__, batch_features in enumerate(self.valid_loader):
+                    # 2. Reshape data and send to device:
+                    tactile = batch_features[0].type(torch.FloatTensor).permute(1,0,2).to(device)
+                    action = batch_features[1].type(torch.FloatTensor).permute(1,0,2).to(device)
+                    label = batch_features[2].type(torch.FloatTensor).permute(1,0,2).to(device)
 
-            #         # 2. Reshape data and send to device:
-            #         context = context_data_list.permute(1,0,2).to(device)
-            #         tactile = batch_features[1].permute(1,0,2).to(device)
-            #         action = batch_features[2].permute(1,0,2).to(device)
-            #         state = batch_features[3].permute(1,0,2).to(device)
+                    tactile_predictions = self.full_model.forward(tactiles=tactile, actions=action)  # Step 3. Run our forward pass.
+                    self.optimizer.zero_grad()
+                    validation_loss = self.criterion(tactile_predictions.to(device), label)
+                    validation_losses += validation_loss.item()
 
-            #         tactile_predictions = self.full_model.forward(tactiles=tactile, actions=action, context=context)  # Step 3. Run our forward pass.
-            #         self.optimizer.zero_grad()
-            #         test_loss = self.criterion(tactile_predictions.unsqueeze(0).to(device), tactile[context_frames:])
-            #         test_losses += test_loss.item()
+            print("Validation mean loss: {:.4f}, ".format(validation_losses / len(self.valid_loader)))
 
-            # print("Test mean loss: {:.4f}, ".format(test_losses / index__))
+            if previous_validation_mean_loss < validation_losses / len(self.valid_loader):
+                early_stop_count +=1
+                if early_stop_count == 3:
+                    print("Early stopping")
+                    break
+            else:
+                early_stop_count = 0
+                previous_validation_mean_loss = validation_losses / len(self.valid_loader) 
 
-            # if previous_test_mean_loss < test_losses / index__:
-            #     print("Early stopping")
-            #     break
-            # else:
-            #     previous_test_mean_loss = test_losses / index__ 
+
 
 class FullModel(nn.Module):
     def __init__(self):
         super(FullModel, self).__init__()
         self.lstm1 = nn.LSTM(96, 96).to(device)  # tactile
         self.lstm2 = nn.LSTM(4, 4).to(device)  # pos_vel
-        self.fc1 = nn.Linear(96+6, 96)  # tactile + pos_vel
+        self.fc1 = nn.Linear(96+4, 96)  # tactile + pos_vel
         self.lstm3 = nn.LSTM(96, 96).to(device)  # pos_vel
 
     def forward(self, tactiles, actions):
