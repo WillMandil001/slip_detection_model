@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from matplotlib import pyplot as plt
+from matplotlib.animation import FuncAnimation
 from scipy.ndimage.interpolation import map_coordinates
 
 
@@ -67,17 +68,16 @@ class DataFormatter():
 		images_for_viewing = []
 
 
-		## shuffle the experiments:
-		
-		robot_pos_files = np.asarray(robot_pos_files)
-		tactile_sensor_files = np.asarray(tactile_sensor_files)
-		slip_labels_files = np.asarray(slip_labels_files)
+		# ## shuffle the experiments:
+		# robot_pos_files = np.asarray(robot_pos_files)
+		# tactile_sensor_files = np.asarray(tactile_sensor_files)
+		# slip_labels_files = np.asarray(slip_labels_files)
 
-		indices = np.arange(robot_pos_files.shape[0])
-		np.random.shuffle(indices)
-		robot_pos_files = robot_pos_files[indices]
-		tactile_sensor_files = tactile_sensor_files[indices]
-		slip_labels_files = slip_labels_files[indices]
+		# indices = np.arange(robot_pos_files.shape[0])
+		# np.random.shuffle(indices)
+		# robot_pos_files = robot_pos_files[indices]
+		# tactile_sensor_files = tactile_sensor_files[indices]
+		# slip_labels_files = slip_labels_files[indices]
 
 		# calculate min max values for scaling:
 		min_max_calc = []
@@ -90,6 +90,7 @@ class DataFormatter():
 		index = 0
 		context_index = 0
 		for i in tqdm(range(1, data_set_length)):
+			i = 61 # TWISTING=69 with scale=10 || DROP=59, 61 with scale=10
 			images_new_sample = np.asarray(pd.read_csv(tactile_sensor_files[i], header=None))[1:]
 			robot_positions_new_sample = np.asarray(pd.read_csv(robot_pos_files[i], header=None))
 			robot_positions_files = np.asarray([robot_positions_new_sample[j*frequency_rate] for j in range(1, min(len(images_new_sample), int(len(robot_positions_new_sample)/frequency_rate)))])
@@ -101,22 +102,94 @@ class DataFormatter():
 			for k in range(0, self.context_data_length):  # create context data for each sample: 
 				context_data.append(self.create_sample(images_new_sample[k]))
 
+			self.image = []
+			self.base = images_new_sample[0]
+			images_visualise = []
 			for j in range(self.context_data_length, len(robot_positions_files) - sequence_length):  # 1 IGNORES THE HEADER
 				robot_positions__ = []
 				images = []
 				images_labels = []
 				slip_labels_sample__ = []
+
+				image =	self.visualise_time_sequence(images_new_sample[j])
+				images_visualise.append(image)
 				for t in range(0, sequence_length):
 					robot_positions__.append(self.convert_to_state(robot_positions_files[j+t]))  # Convert from HTM to euler task space and quaternion orientation. [[was just [t]]]]
-					images.append(self.create_sample(images_new_sample[j+t]))
 					images_labels.append(images_new_sample[j+t+1])  # [video location, frame]
 					slip_labels_sample__.append(slip_labels_sample[j+t][2])
-				self.process_data_sample(index, np.asarray([state for state in robot_positions__]), np.asarray(images), np.asarray(slip_labels_sample__), np.asarray(context_data), context_written, context_index, j)
+				# self.process_data_sample(index, np.asarray([state for state in robot_positions__]), image, np.asarray(slip_labels_sample__), np.asarray(context_data), context_written, context_index, j)
 				context_written = 1
 				index += 1
 			context_index += 1
 
+			self.run_the_tape(images_visualise)
+		print(aaa)
 		self.save_data_to_map()
+
+
+	def grab_frame(self):
+		print(self.indexyyy)
+		frame = self.images[self.indexyyy]
+		return frame
+
+	def update(self, i):
+		self.im1.set_data(self.grab_frame())
+		self.indexyyy+=1
+		if self.indexyyy == len(self.images):
+			self.indexyyy = 0
+
+	def run_the_tape(self, images):
+		self.indexyyy = 0
+		self.images = images
+		ax1 = plt.subplot(1,2,1)
+		self.im1 = ax1.imshow(self.grab_frame())
+		ani = FuncAnimation(plt.gcf(), self.update, interval=10)
+		plt.show()
+
+
+	def visualise_time_sequence(self, data):
+		width  = 300  # Width of the image
+		height = 300  # Height of the image
+		margin = 60   # Margin of the taxel in the image
+		scale  = 10
+		radius = 6
+
+		if self.image == []:
+			self.image = np.zeros((height,width,3), np.uint8)
+		else:
+			self.image = (self.image - 5.0).clip(min=0.0).astype(np.float32)
+
+		cv2.namedWindow('xela-sensor', cv2.WINDOW_NORMAL)
+
+		diff = np.array(data).astype(np.float32) - np.array(self.base).astype(np.float32)
+		diff = diff.reshape(4,4,3)
+		diff = diff.T.reshape(3,4,4)
+		dx = np.rot90((np.flip(diff[0], axis=0) / scale), k=3, axes=(0,1)).flatten()
+		dy = np.rot90((np.flip(diff[1], axis=0) / scale), k=3, axes=(0,1)).flatten()
+		dz = np.rot90((np.flip(diff[2], axis=0) / scale), k=3, axes=(0,1)).flatten()
+
+		image_positions = []
+		for x in range(margin, 5*margin, margin):
+			for y in range(margin, 5*margin, margin):
+				image_positions.append([y,x])
+
+		for xx, yy ,zz, image_position in zip(dx, dy, dz, image_positions):
+			z = radius # + (abs(xx))
+			x = image_position[0] + int(-xx) # int(zz)
+			y = image_position[1] + int(-yy) # int(yy)
+			# color = (255-int(z/100 * 255), 210, 255-int(z/100 * 255))  # Draw sensor circles]
+			color = (255,255,255)
+			cv2.circle(self.image, (x, y), int(z), color=color, thickness=-1)  # Draw sensor circles
+			gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+
+		# cv2.imshow("xela-sensor", gray)   # Display sensor image
+		# key = cv2.waitKey()
+		# cv2.destroyAllWindows()
+		# # key = cv2.waitKey(40)
+		# # if key == 27:
+		# # 	cv2.destroyAllWindows()
+		return gray
+
 
 	def create_sample(self, sample):
 		image = np.asarray(sample).astype(float)
@@ -155,9 +228,8 @@ class DataFormatter():
 
 	def process_data_sample(self, index, robot_positions, image_names, slip_labels, context_data, context_written, context_index, time_step):
 		raw = []
-		for k in range(len(image_names)):
-			tmp = image_names[k].astype(np.float32)
-			raw.append(tmp)
+		tmp = image_names.astype(np.float32)
+		raw.append(tmp)
 		raw = np.array(raw)
 
 		ref = []
