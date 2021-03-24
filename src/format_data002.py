@@ -90,7 +90,7 @@ class DataFormatter():
 		index = 0
 		context_index = 0
 		for i in tqdm(range(1, data_set_length)):
-			i = 61 # TWISTING=69 with scale=10 || DROP=59, 61 with scale=10
+			i = 69 # TWISTING=69 with scale=10 || DROP=59, 61 with scale=10
 			images_new_sample = np.asarray(pd.read_csv(tactile_sensor_files[i], header=None))[1:]
 			robot_positions_new_sample = np.asarray(pd.read_csv(robot_pos_files[i], header=None))
 			robot_positions_files = np.asarray([robot_positions_new_sample[j*frequency_rate] for j in range(1, min(len(images_new_sample), int(len(robot_positions_new_sample)/frequency_rate)))])
@@ -145,7 +145,6 @@ class DataFormatter():
 		self.im1 = ax1.imshow(self.grab_frame())
 		ani = FuncAnimation(plt.gcf(), self.update, interval=10)
 		plt.show()
-
 
 	def visualise_time_sequence(self, data):
 		width  = 300  # Width of the image
