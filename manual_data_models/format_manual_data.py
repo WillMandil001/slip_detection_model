@@ -55,7 +55,7 @@ class DataFormatter():
 			images_visualise = []
 			for j in range(self.context_data_length, len(robot_state) - sequence_length):
 				robot_positions__ = []
-				images = []
+				xela_data = []
 				images_labels = []
 				slip_labels_sample__ = []
 

@@ -47,11 +47,11 @@ data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_colle
 
 files = glob.glob(data_dir + '/*')
 
-robot_state  = np.asarray(pd.read_csv(files[3] + '/robot_state.csv', header=None))
-proximity    = np.asarray(pd.read_csv(files[3] + '/proximity.csv', header=None))
-xela_sensor1 = np.asarray(pd.read_csv(files[3] + '/xela_sensor1.csv', header=None))
-xela_sensor2 = np.asarray(pd.read_csv(files[3] + '/xela_sensor2.csv', header=None))
-meta_data = np.asarray(pd.read_csv(files[3] + '/meta_data.csv', header=None))
+robot_state  = np.asarray(pd.read_csv(files[1] + '/robot_state.csv', header=None))
+proximity    = np.asarray(pd.read_csv(files[1] + '/proximity.csv', header=None))
+xela_sensor1 = np.asarray(pd.read_csv(files[1] + '/xela_sensor1.csv', header=None))
+xela_sensor2 = np.asarray(pd.read_csv(files[1] + '/xela_sensor2.csv', header=None))
+meta_data = np.asarray(pd.read_csv(files[1] + '/meta_data.csv', header=None))
 
 ee_positions  = []
 ee_position_x = []
@@ -68,6 +68,29 @@ ee_position_x = np.asarray(ee_position_x).astype(float)
 ee_position_y = np.asarray(ee_position_y).astype(float)
 ee_position_z = np.asarray(ee_position_z).astype(float)
 
+class image_player():
+	def __init__(self, images):
+		self.run_the_tape(images)
+
+	def grab_frame(self):
+		print(self.indexyyy,  end="\r")
+		frame = self.images[self.indexyyy]
+		# frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+		return frame
+
+	def update(self, i):
+		self.im1.set_data(self.grab_frame())
+		self.indexyyy+=1
+		if self.indexyyy == len(self.images):
+			self.indexyyy = 0
+
+	def run_the_tape(self, images):
+		self.indexyyy = 0
+		self.images = images
+		ax1 = plt.subplot(1,2,1)
+		self.im1 = ax1.imshow(self.grab_frame())
+		ani = FuncAnimation(plt.gcf(), self.update, interval=20.8)
+		plt.show()
 
 def visual_representation():
 	# robot ee state data:
@@ -76,9 +99,6 @@ def visual_representation():
 	sc = ax1.scatter([],[],[], c='darkblue', marker=',' , alpha=0.5)
 
 	def update(iteration):
-		p = matplotlib.patches.Circle((ee_position_x[0:iteration], ee_position_y[0:iteration]), 0.01)
-		ax1.add_patch(p)
-		art3d.pathpatch_2d_to_3d(p, z=ee_position_z[0:iteration], zdir="z")
 		sc._offsets3d = (ee_position_x[0:iteration], ee_position_y[0:iteration], ee_position_z[0:iteration])
 
 	ax1.set_xlabel('X')
@@ -93,20 +113,10 @@ def visual_representation():
 	# plt.tight_layout()
 
 	# tactile data:
-	xela_sensor1_data_x = []
-	xela_sensor1_data_y = []
-	xela_sensor1_data_z = []
-	xela_sensor2_data_x = []
-	xela_sensor2_data_y = []
-	xela_sensor2_data_z = []
-
-	xela_sensor1_data_x_mean = []
-	xela_sensor1_data_y_mean = []
-	xela_sensor1_data_z_mean = []
-
-	xela_sensor2_data_x_mean = []
-	xela_sensor2_data_y_mean = []
-	xela_sensor2_data_z_mean = []
+	xela_sensor1_data_x, xela_sensor1_data_y, xela_sensor1_data_z = [], [], []
+	xela_sensor2_data_x, xela_sensor2_data_y, xela_sensor2_data_z = [], [], []
+	xela_sensor1_data_x_mean, xela_sensor1_data_y_mean, xela_sensor1_data_z_mean = [], [], []
+	xela_sensor2_data_x_mean, xela_sensor2_data_y_mean, xela_sensor2_data_z_mean = [], [], []
 
 	for sample1, sample2 in zip(xela_sensor1[1:], xela_sensor2[1:]):
 		sample1_data_x, sample1_data_y, sample1_data_z = [], [], []
@@ -172,10 +182,61 @@ def visual_representation():
 	ax4 = fig.add_subplot(335)
 	anim4 = FuncAnimation(fig=fig, func=update_barz, frames=len(ee_position_z), interval=20.8)
 
-
-
 	plt.tight_layout()
 	plt.show()
 
-visual_representation()
+def simple_image_representation():
+	xela_sensor1_data_x, xela_sensor1_data_y, xela_sensor1_data_z = [], [], []
+	xela_sensor2_data_x, xela_sensor2_data_y, xela_sensor2_data_z = [], [], []
+	xela_sensor1_data_x_mean, xela_sensor1_data_y_mean, xela_sensor1_data_z_mean = [], [], []
+	xela_sensor2_data_x_mean, xela_sensor2_data_y_mean, xela_sensor2_data_z_mean = [], [], []
+
+	for sample1, sample2 in zip(xela_sensor1[1:], xela_sensor2[1:]):
+		sample1_data_x, sample1_data_y, sample1_data_z = [], [], []
+		sample2_data_x, sample2_data_y, sample2_data_z = [], [], []
+
+		for i in range(0, len(xela_sensor1[0]), 3):
+			sample1_data_x.append(float(sample1[i]))
+			sample1_data_y.append(float(sample1[i+1]))
+			sample1_data_z.append(float(sample1[i+2]))
+
+			sample2_data_x.append(float(sample2[i]))
+			sample2_data_y.append(float(sample2[i+1]))
+			sample2_data_z.append(float(sample2[i+2]))
+
+		xela_sensor1_data_x.append(sample1_data_x)
+		xela_sensor1_data_y.append(sample1_data_y)
+		xela_sensor1_data_z.append(sample1_data_z)
+
+		xela_sensor2_data_x.append(sample2_data_x)
+		xela_sensor2_data_y.append(sample2_data_y)
+		xela_sensor2_data_z.append(sample2_data_z)
+
+
+	# normalise for each force:
+	min_x_sensor1, max_x_sensor1 = (min([min(x) for x in xela_sensor1_data_x]), max([max(x) for x in xela_sensor1_data_x]))
+	min_y_sensor1, max_y_sensor1 = (min([min(y) for y in xela_sensor1_data_y]), max([max(y) for y in xela_sensor1_data_y]))
+	min_z_sensor1, max_z_sensor1 = (min([min(z) for z in xela_sensor1_data_z]), max([max(z) for z in xela_sensor1_data_z]))
+
+	images = []
+	for time_step in range(len(xela_sensor1_data_x)):
+		image = np.zeros((4,4,3), np.float32)
+		index = 0
+		for x in range(4):
+			for y in range(4):
+				image[x][y] =  [(255*((xela_sensor1_data_x[time_step][index] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1))), 
+								(255*((xela_sensor1_data_y[time_step][index] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1))), 
+								(255*((xela_sensor1_data_z[time_step][index] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)))]
+				reshaped_image = cv2.resize(image.astype(np.uint8), dsize=(300, 300), interpolation=cv2.INTER_CUBIC)
+				index += 1
+		# cv2.imshow("image", reshaped_image)
+		# k = cv2.waitKey(0)
+		# print(image)
+		# break
+		images.append(reshaped_image)
+	image_player(images)
+
+
+simple_image_representation()
+# visual_representation()
 # animate_robot_positions()
