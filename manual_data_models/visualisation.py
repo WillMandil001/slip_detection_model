@@ -38,20 +38,27 @@ def animate_robot_positions():
 	ax.set_zlim(min(ee_position_z),max(ee_position_z))
 
 	fps = 48 # time between each frame in milliseconds
-	ani = matplotlib.animation.FuncAnimation(fig, update, frames=len(ee_position_x), interval=20.8)
+	ani = matplotlib.animation.FuncAnimation(fig, update, frames=len(ee_position_x), interval=20.8, save_count=len(ee_position_x))
+	# ani.save(str(files[data_to_visualise]) + '/EE_animation.gif')
+	# ani.save(str(files[data_to_visualise]) + '/EE_animation.mp4')
 	plt.tight_layout()
 	plt.show()
 
-
-data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_45/data_collection_001/'
+data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/data_collection_001/'
+# data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/formatting_tests/'
+data_to_visualise = 100
+# 1
 
 files = glob.glob(data_dir + '/*')
 
-robot_state  = np.asarray(pd.read_csv(files[1] + '/robot_state.csv', header=None))
-proximity    = np.asarray(pd.read_csv(files[1] + '/proximity.csv', header=None))
-xela_sensor1 = np.asarray(pd.read_csv(files[1] + '/xela_sensor1.csv', header=None))
-xela_sensor2 = np.asarray(pd.read_csv(files[1] + '/xela_sensor2.csv', header=None))
-meta_data = np.asarray(pd.read_csv(files[1] + '/meta_data.csv', header=None))
+robot_state  = np.asarray(pd.read_csv(files[data_to_visualise] + '/robot_state.csv', header=None))
+proximity    = np.asarray(pd.read_csv(files[data_to_visualise] + '/proximity.csv', header=None))
+xela_sensor1 = np.asarray(pd.read_csv(files[data_to_visualise] + '/xela_sensor1.csv', header=None))
+xela_sensor2 = np.asarray(pd.read_csv(files[data_to_visualise] + '/xela_sensor2.csv', header=None))
+meta_data = np.asarray(pd.read_csv(files[data_to_visualise] + '/meta_data.csv', header=None))
+
+print("file name: ", files[data_to_visualise])
+print("meta_data: ", meta_data[1])
 
 ee_positions  = []
 ee_position_x = []
@@ -90,6 +97,7 @@ class image_player():
 		ax1 = plt.subplot(1,2,1)
 		self.im1 = ax1.imshow(self.grab_frame())
 		ani = FuncAnimation(plt.gcf(), self.update, interval=20.8)
+		ani.save(str(files[data_to_visualise]) + '/left_xela_image_animation.gif')
 		plt.show()
 
 def visual_representation():
@@ -212,7 +220,6 @@ def simple_image_representation():
 		xela_sensor2_data_y.append(sample2_data_y)
 		xela_sensor2_data_z.append(sample2_data_z)
 
-
 	# normalise for each force:
 	min_x_sensor1, max_x_sensor1 = (min([min(x) for x in xela_sensor1_data_x]), max([max(x) for x in xela_sensor1_data_x]))
 	min_y_sensor1, max_y_sensor1 = (min([min(y) for y in xela_sensor1_data_y]), max([max(y) for y in xela_sensor1_data_y]))
@@ -233,10 +240,10 @@ def simple_image_representation():
 		# k = cv2.waitKey(0)
 		# print(image)
 		# break
-		images.append(reshaped_image)
+		images.append(np.rot90(reshaped_image, k=1, axes=(0, 1)))
 	image_player(images)
 
 
-simple_image_representation()
+# simple_image_representation()
 # visual_representation()
-# animate_robot_positions()
+animate_robot_positions()

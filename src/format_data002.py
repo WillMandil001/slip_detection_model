@@ -278,7 +278,7 @@ class DataFormatter():
 @click.option('--data_set_length', type=click.INT, default=70, help='size of dataset to format.')
 @click.option('--data_dir', type=click.Path(exists=True), default='/home/user/Robotics/slip_detection_franka/Dataset/', help='Directory containing data.')  # xela_validation/ /home/user/Robotics/Data_sets/data_set_003/
 @click.option('--out_dir', type=click.Path(), default='/home/user/Robotics/Data_sets/slip_detection/video_frames_002', help='Output directory of the converted data.')
-@click.option('--sequence_length', type=click.INT, default=16, help='Sequence length, including context frames.')
+@click.option('--sequence_length', type=click.INT, default=20, help='Sequence length, including context frames.')
 @click.option('--image_original_width', type=click.INT, default=4, help='Original width of the images.')
 @click.option('--image_original_height', type=click.INT, default=4, help='Original height of the images.')
 @click.option('--image_original_channel', type=click.INT, default=3, help='Original channels amount of the images.')
