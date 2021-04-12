@@ -20,13 +20,60 @@ from matplotlib.animation import FuncAnimation
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.spatial.transform import Rotation as R
 
-
 data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/data_collection_001/'
 out_dir = '/home/user/Robotics/Data_sets/slip_detection/manual_slip_detection/'
 sequence_length = 20
+image_height, image_width = 64, 64
+
+# def create_image():
+# 	xela_sensor1_data_x, xela_sensor1_data_y, xela_sensor1_data_z = [], [], []
+# 	xela_sensor2_data_x, xela_sensor2_data_y, xela_sensor2_data_z = [], [], []
+# 	xela_sensor1_data_x_mean, xela_sensor1_data_y_mean, xela_sensor1_data_z_mean = [], [], []
+# 	xela_sensor2_data_x_mean, xela_sensor2_data_y_mean, xela_sensor2_data_z_mean = [], [], []
+
+# 	for sample1, sample2 in zip(xela_sensor1[1:], xela_sensor2[1:]):
+# 		sample1_data_x, sample1_data_y, sample1_data_z = [], [], []
+# 		sample2_data_x, sample2_data_y, sample2_data_z = [], [], []
+
+# 		for i in range(0, len(xela_sensor1[0]), 3):
+# 			sample1_data_x.append(float(sample1[i]))
+# 			sample1_data_y.append(float(sample1[i+1]))
+# 			sample1_data_z.append(float(sample1[i+2]))
+
+# 			sample2_data_x.append(float(sample2[i]))
+# 			sample2_data_y.append(float(sample2[i+1]))
+# 			sample2_data_z.append(float(sample2[i+2]))
+
+# 		xela_sensor1_data_x.append(sample1_data_x)
+# 		xela_sensor1_data_y.append(sample1_data_y)
+# 		xela_sensor1_data_z.append(sample1_data_z)
+
+# 		xela_sensor2_data_x.append(sample2_data_x)
+# 		xela_sensor2_data_y.append(sample2_data_y)
+# 		xela_sensor2_data_z.append(sample2_data_z)
+
+# 	# normalise for each force:
+# 	min_x_sensor1, max_x_sensor1 = (min([min(x) for x in xela_sensor1_data_x]), max([max(x) for x in xela_sensor1_data_x]))
+# 	min_y_sensor1, max_y_sensor1 = (min([min(y) for y in xela_sensor1_data_y]), max([max(y) for y in xela_sensor1_data_y]))
+# 	min_z_sensor1, max_z_sensor1 = (min([min(z) for z in xela_sensor1_data_z]), max([max(z) for z in xela_sensor1_data_z]))
+
+# 	images = []
+# 	for time_step in range(len(xela_sensor1_data_x)):
+# 		image = np.zeros((4,4,3), np.float32)
+# 		index = 0
+# 		for x in range(4):
+# 			for y in range(4):
+# 				image[x][y] =  [(255*((xela_sensor1_data_x[time_step][index] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1))), 
+# 								(255*((xela_sensor1_data_y[time_step][index] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1))), 
+# 								(255*((xela_sensor1_data_z[time_step][index] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)))]
+# 				reshaped_image = cv2.resize(image.astype(np.uint8), dsize=(image_height, image_width), interpolation=cv2.INTER_CUBIC)
+# 				index += 1
+
+# 		images.append(np.rot90(reshaped_image, k=1, axes=(0, 1)))
+# 	image_player(images)
+
 
 files = glob.glob(data_dir + '/*')
-
 path_file = []
 
 for experiment_number in tqdm(range(len(files))):
@@ -137,31 +184,40 @@ for experiment_number in tqdm(range(len(files))):
 	xela_2_data = []
 	xela_1_labels = []
 	xela_2_labels = []
+	experiment_data = []
+	time_step_data = []
 
 	for sample in range(0, len(ee_position_x) - sequence_length):
-		robot_data_sequence, xela_1_sequence_data, xela_2_sequence_data, xela_1_sequence_labels, xela_2_sequence_labels = [], [], [], [], []
+		robot_data_sequence, xela_1_sequence_data, xela_2_sequence_data, experiment_data_sequence, time_step_data_sequence = [], [], [], [], []
 		for t in range(0, sequence_length):
 			robot_data_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_x[sample+t], ee_orientation_y[sample+t], ee_orientation_z[sample+t]])
 			xela_1_sequence_data.append(np.column_stack((xela_sensor1_data_x[sample+t], xela_sensor1_data_y[sample+t], xela_sensor1_data_z[sample+t])).flatten())
 			xela_2_sequence_data.append(np.column_stack((xela_sensor2_data_x[sample+t], xela_sensor2_data_y[sample+t], xela_sensor2_data_z[sample+t])).flatten())
-
+			experiment_data_sequence.append(experiment_number)
+			time_step_data_sequence.append(sample+t)
 		robot_data.append(robot_data_sequence)
 		xela_1_data.append(xela_1_sequence_data)
 		xela_2_data.append(xela_2_sequence_data)
+		experiment_data.append(experiment_number)
+		time_step_data.append(time_step_data_sequence)
 
 	np.save(out_dir + 'robot_data_' + str(experiment_number), robot_data)
 	np.save(out_dir + 'xela_1_data_' + str(experiment_number), xela_1_data)
 	np.save(out_dir + 'xela_2_data_' + str(experiment_number), xela_2_data)
+	np.save(out_dir + 'experiment_number_' + str(experiment_number), experiment_data)
+	np.save(out_dir + 'time_step_data_' + str(experiment_number), time_step_data)
 	ref = []
 	ref.append('robot_data_' + str(experiment_number) + '.npy')
 	ref.append('xela_1_data_' + str(experiment_number) + '.npy')
 	ref.append('xela_2_data_' + str(experiment_number) + '.npy')
+	ref.append('experiment_number_' + str(experiment_number) + '.npy')
+	ref.append('time_step_data_' + str(experiment_number) + '.npy')
 	path_file.append(ref)
 
 
 with open(out_dir + '/map.csv', 'w') as csvfile:
 	writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-	writer.writerow(['robot_data_path', 'xela_1_data_path', 'xela_2_data_path', 'experiment', 'sample_in_experiment'])
+	writer.writerow(['robot_data_path', 'xela_1_data_path', 'xela_2_data_path', 'experiment_number', 'time_steps'])
 	for row in path_file:
 		writer.writerow(row)
 
