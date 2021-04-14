@@ -52,12 +52,19 @@ for experiment_number in tqdm(range(len(files))):
 	ee_positions = []
 	ee_position_x, ee_position_y, ee_position_z = [], [], []
 	ee_orientation_x, ee_orientation_y, ee_orientation_z = [], [], []
+	ee_orientation_quat_x, ee_orientation_quat_y, ee_orientation_quat_z, ee_orientation_quat_w = [], [], [], []
 
 	for state in robot_state[1:]:
 		ee_positions.append([float(item) for item in robot_state[1][-7:-4]])
 		ee_position_x.append(state[-7])
 		ee_position_y.append(state[-6])
 		ee_position_z.append(state[-5])
+		# quat
+		ee_orientation_quat_x.append(state[-4])
+		ee_orientation_quat_y.append(state[-3])
+		ee_orientation_quat_z.append(state[-2])
+		ee_orientation_quat_w.append(state[-1])
+		# euler
 		ee_orientation = R.from_quat([state[-4], state[-3], state[-2], state[-1]]).as_euler('zyx', degrees=True)
 		ee_orientation_x.append(ee_orientation[0])
 		ee_orientation_y.append(ee_orientation[1])
@@ -66,7 +73,12 @@ for experiment_number in tqdm(range(len(files))):
 	ee_position_x = np.asarray(ee_position_x).astype(float)
 	ee_position_y = np.asarray(ee_position_y).astype(float)
 	ee_position_z = np.asarray(ee_position_z).astype(float)
-
+	# quat:
+	ee_orientation_quat_x = np.asarray(ee_orientation_quat_x).astype(float)
+	ee_orientation_quat_y = np.asarray(ee_orientation_quat_y).astype(float)
+	ee_orientation_quat_z = np.asarray(ee_orientation_quat_z).astype(float)
+	ee_orientation_quat_w = np.asarray(ee_orientation_quat_w).astype(float)
+	# euler:
 	ee_orientation_x = np.asarray(ee_orientation_x).astype(float)
 	ee_orientation_y = np.asarray(ee_orientation_y).astype(float)
 	ee_orientation_z = np.asarray(ee_orientation_z).astype(float)
@@ -75,7 +87,12 @@ for experiment_number in tqdm(range(len(files))):
 	min_x_position_x, max_x_position_x = (min(ee_position_x), max(ee_position_x))
 	min_y_position_y, max_y_position_y = (min(ee_position_y), max(ee_position_y))
 	min_z_position_z, max_z_position_z = (min(ee_position_z), max(ee_position_z))
-
+	#quat
+	min_x_orientation_quat_x, max_x_orientation_quat_x = (min(ee_orientation_quat_x), max(ee_orientation_quat_x))
+	min_y_orientation_quat_y, max_y_orientation_quat_y = (min(ee_orientation_quat_y), max(ee_orientation_quat_y))
+	min_z_orientation_quat_z, max_z_orientation_quat_z = (min(ee_orientation_quat_z), max(ee_orientation_quat_z))
+	min_z_orientation_quat_w, max_z_orientation_quat_w = (min(ee_orientation_quat_w), max(ee_orientation_quat_w))
+	# euler:
 	min_x_orientation_x, max_x_orientation_x = (min(ee_orientation_x), max(ee_orientation_x))
 	min_y_orientation_y, max_y_orientation_y = (min(ee_orientation_y), max(ee_orientation_y))
 	min_z_orientation_z, max_z_orientation_z = (min(ee_orientation_z), max(ee_orientation_z))
@@ -84,7 +101,12 @@ for experiment_number in tqdm(range(len(files))):
 		ee_position_x[time_step] = (ee_position_x[time_step] - min_x_position_x) / (max_x_position_x - min_x_position_x) 
 		ee_position_y[time_step] = (ee_position_y[time_step] - min_y_position_y) / (max_y_position_y - min_y_position_y) 
 		ee_position_z[time_step] = (ee_position_z[time_step] - min_z_position_z) / (max_z_position_z - min_z_position_z)
-
+		# quat:
+		ee_orientation_quat_x[time_step] = (ee_orientation_quat_x[time_step] - min_x_orientation_quat_x) / (max_x_orientation_quat_x - min_x_orientation_quat_x) 
+		ee_orientation_quat_y[time_step] = (ee_orientation_quat_y[time_step] - min_y_orientation_quat_y) / (max_y_orientation_quat_y - min_y_orientation_quat_y) 
+		ee_orientation_quat_z[time_step] = (ee_orientation_quat_z[time_step] - min_z_orientation_quat_z) / (max_z_orientation_quat_z - min_z_orientation_quat_z)
+		ee_orientation_quat_w[time_step] = (ee_orientation_quat_w[time_step] - min_z_orientation_quat_w) / (max_z_orientation_quat_w - min_z_orientation_quat_w)
+		# euler:
 		ee_orientation_x[time_step] = (ee_orientation_x[time_step] - min_x_orientation_x) / (max_x_orientation_x - min_x_orientation_x) 
 		ee_orientation_y[time_step] = (ee_orientation_y[time_step] - min_y_orientation_y) / (max_y_orientation_y - min_y_orientation_y) 
 		ee_orientation_z[time_step] = (ee_orientation_z[time_step] - min_z_orientation_z) / (max_z_orientation_z - min_z_orientation_z)
@@ -92,6 +114,12 @@ for experiment_number in tqdm(range(len(files))):
 	ee_position_x = np.asarray(ee_position_x)
 	ee_position_y = np.asarray(ee_position_y)
 	ee_position_z = np.asarray(ee_position_z)
+	# quat:
+	ee_orientation_quat_x = np.asarray(ee_orientation_quat_x)
+	ee_orientation_quat_y = np.asarray(ee_orientation_quat_y)
+	ee_orientation_quat_z = np.asarray(ee_orientation_quat_z)
+	ee_orientation_quat_w = np.asarray(ee_orientation_quat_w)
+	# euler:
 	ee_orientation_x = np.asarray(ee_orientation_x)
 	ee_orientation_y = np.asarray(ee_orientation_y)
 	ee_orientation_z = np.asarray(ee_orientation_z)
@@ -164,7 +192,8 @@ for experiment_number in tqdm(range(len(files))):
 	for sample in range(0, len(ee_position_x) - sequence_length):
 		robot_data_sequence, xela_1_sequence_data, xela_2_sequence_data, experiment_data_sequence, time_step_data_sequence, xela_image_1_data_sequence, xela_image_2_data_sequence = [], [], [], [], [], [], []
 		for t in range(0, sequence_length):
-			robot_data_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_x[sample+t], ee_orientation_y[sample+t], ee_orientation_z[sample+t]])
+			robot_data_euler_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_x[sample+t], ee_orientation_y[sample+t], ee_orientation_z[sample+t]])
+			robot_data_quat_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_quat_x[sample+t], ee_orientation_quat_y[sample+t], ee_orientation_quat_z[sample+t], ee_orientation_quat_w[sample+t]])
 			xela_1_sequence_data.append(np.column_stack((xela_sensor1_data_x[sample+t], xela_sensor1_data_y[sample+t], xela_sensor1_data_z[sample+t])).flatten())
 			xela_2_sequence_data.append(np.column_stack((xela_sensor2_data_x[sample+t], xela_sensor2_data_y[sample+t], xela_sensor2_data_z[sample+t])).flatten())
 			xela_image_1_data_sequence.append(xela_images_1[sample+t])
@@ -179,7 +208,8 @@ for experiment_number in tqdm(range(len(files))):
 		# experiment_data.append(experiment_number)
 		# time_step_data.append(time_step_data_sequence)
 
-		np.save(out_dir + 'robot_data_' + str(index_to_save), robot_data_sequence)
+		np.save(out_dir + 'robot_data_euler_' + str(index_to_save), robot_data_euler_sequence)
+		np.save(out_dir + 'robot_data_quat_' + str(index_to_save), robot_data_quat_sequence)
 		np.save(out_dir + 'xela_1_data_' + str(index_to_save), xela_1_sequence_data)
 		np.save(out_dir + 'xela_2_data_' + str(index_to_save), xela_2_sequence_data)
 		np.save(out_dir + 'xela_1_image_data_' + str(index_to_save), xela_image_1_data_sequence)
@@ -187,7 +217,8 @@ for experiment_number in tqdm(range(len(files))):
 		np.save(out_dir + 'experiment_number_' + str(index_to_save), experiment_data_sequence)
 		np.save(out_dir + 'time_step_data_' + str(index_to_save), time_step_data_sequence)
 		ref = []
-		ref.append('robot_data_' + str(index_to_save) + '.npy')
+		ref.append('robot_data_euler_' + str(index_to_save) + '.npy')
+		ref.append('robot_data_quat_' + str(index_to_save) + '.npy')
 		ref.append('xela_1_data_' + str(index_to_save) + '.npy')
 		ref.append('xela_2_data_' + str(index_to_save) + '.npy')
 		ref.append('xela_1_image_data_' + str(index_to_save) + '.npy')
@@ -199,7 +230,7 @@ for experiment_number in tqdm(range(len(files))):
 
 with open(out_dir + '/map.csv', 'w') as csvfile:
 	writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-	writer.writerow(['robot_data_path', 'xela_1_data_path', 'xela_2_data_path', 'xela_1_image_data_path', 'xela_2_image_data_path', 'experiment_number', 'time_steps'])
+	writer.writerow(['robot_data_path_euler', 'robot_data_path_quat', 'xela_1_data_path', 'xela_2_data_path', 'xela_1_image_data_path', 'xela_2_image_data_path', 'experiment_number', 'time_steps'])
 	for row in path_file:
 		writer.writerow(row)
 
