@@ -44,9 +44,9 @@ def animate_robot_positions():
 	plt.tight_layout()
 	plt.show()
 
-# data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/data_collection_001/'
-data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/formatting_tests/'
-data_to_visualise = 1
+data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/data_collection_001/'
+# data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/formatting_tests/'
+data_to_visualise = 100
 # 100
 
 files = glob.glob(data_dir + '/*')
@@ -83,7 +83,7 @@ class image_player():
 
 	def grab_frame(self):
 		print(self.indexyyy,  end="\r")
-		frame = self.images[self.indexyyy][:,:,2]
+		frame = self.images[self.indexyyy][:,:,0]
 		# frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 		return frame
 
@@ -100,7 +100,7 @@ class image_player():
 		ax1 = plt.subplot(1,2,1)
 		self.im1 = ax1.imshow(self.grab_frame(), cmap='gray', vmin=0, vmax=255)
 		ani = FuncAnimation(plt.gcf(), self.update, interval=20.8, save_count=len(ee_position_x))
-		ani.save(str(files[data_to_visualise]) + '/left_xela_image_animation_z.gif')
+		ani.save(str(files[data_to_visualise]) + '/pre_p_left_xela_image_animation_x.gif')
 		plt.show()
 
 def visual_representation():
@@ -227,6 +227,15 @@ def simple_image_representation():
 		xela_sensor2_data_y.append(sample2_data_y)
 		xela_sensor2_data_z.append(sample2_data_z)
 
+	# mean starting values:
+	average_starting_value_x = int(sum(xela_sensor1_data_x[0]) / len(xela_sensor1_data_x[0]))
+	average_starting_value_y = int(sum(xela_sensor1_data_y[0]) / len(xela_sensor1_data_y[0]))
+	average_starting_value_z = int(sum(xela_sensor1_data_z[0]) / len(xela_sensor1_data_z[0]))
+	
+	offset_x = [average_starting_value_x - tactile_starting_value for tactile_starting_value in xela_sensor1_data_x[0]]
+	offset_y = [average_starting_value_y - tactile_starting_value for tactile_starting_value in xela_sensor1_data_y[0]]
+	offset_z = [average_starting_value_z - tactile_starting_value for tactile_starting_value in xela_sensor1_data_z[0]]
+
 	# normalise for each force:
 	min_x_sensor1, max_x_sensor1 = (min([min(x) for x in xela_sensor1_data_x]), max([max(x) for x in xela_sensor1_data_x]))
 	min_y_sensor1, max_y_sensor1 = (min([min(y) for y in xela_sensor1_data_y]), max([max(y) for y in xela_sensor1_data_y]))
@@ -234,13 +243,16 @@ def simple_image_representation():
 
 	images = []
 	for time_step in range(len(xela_sensor1_data_x)):
-		image = np.zeros((4,4,3), np.float32)
+		sample_x_test = [offset+real_value for offset, real_value in zip(offset_x, xela_sensor1_data_x[time_step])]
+		sample_y_test = [offset+real_value for offset, real_value in zip(offset_y, xela_sensor1_data_y[time_step])]
+		sample_z_test = [offset+real_value for offset, real_value in zip(offset_z, xela_sensor1_data_z[time_step])]
 		index = 0
+		image = np.zeros((4,4,3), np.float32)
 		for x in range(4):
 			for y in range(4):
-				image[x][y] =  [(255*((xela_sensor1_data_x[time_step][index] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1))), 
-								(255*((xela_sensor1_data_y[time_step][index] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1))), 
-								(255*((xela_sensor1_data_z[time_step][index] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)))]
+				image[x][y] =  [(255*((sample_x_test[index] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1))), 
+								(255*((sample_y_test[index] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1))), 
+								(255*((sample_z_test[index] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)))]
 				reshaped_image = cv2.resize(image.astype(np.uint8), dsize=(height, width), interpolation=cv2.INTER_CUBIC)
 				index += 1
 		# cv2.imshow("image", cv2.resize(image.astype(np.uint8), dsize=(height, width), interpolation=cv2.INTER_NEAREST)[:,:,0])

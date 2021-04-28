@@ -22,6 +22,7 @@ from scipy.spatial.transform import Rotation as R
 
 data_dir = '/home/user/Robotics/Data_sets/slip_detection/will_dataset/data_collection_001_122/data_collection_001/'
 out_dir = '/home/user/Robotics/Data_sets/slip_detection/manual_slip_detection/'
+SAVE_IMAGES= True
 sequence_length = 20
 image_height, image_width = 32, 32
 
@@ -140,64 +141,74 @@ for experiment_number in tqdm(range(len(files))):
 			sample1_data_y.append(float(sample1[i+1]))
 			sample1_data_z.append(float(sample1[i+2]))
 
-			sample2_data_x.append(float(sample2[i]))
-			sample2_data_y.append(float(sample2[i+1]))
-			sample2_data_z.append(float(sample2[i+2]))
+			# sample2_data_x.append(float(sample2[i]))
+			# sample2_data_y.append(float(sample2[i+1]))
+			# sample2_data_z.append(float(sample2[i+2]))
 
 		xela_sensor1_data_x.append(sample1_data_x)
 		xela_sensor1_data_y.append(sample1_data_y)
 		xela_sensor1_data_z.append(sample1_data_z)
 
-		xela_sensor2_data_x.append(sample2_data_x)
-		xela_sensor2_data_y.append(sample2_data_y)
-		xela_sensor2_data_z.append(sample2_data_z)
+		# xela_sensor2_data_x.append(sample2_data_x)
+		# xela_sensor2_data_y.append(sample2_data_y)
+		# xela_sensor2_data_z.append(sample2_data_z)
+
+	# mean starting values:
+	xela_sensor1_average_starting_value_x = int(sum(xela_sensor1_data_x[0]) / len(xela_sensor1_data_x[0]))
+	xela_sensor1_average_starting_value_y = int(sum(xela_sensor1_data_y[0]) / len(xela_sensor1_data_y[0]))
+	xela_sensor1_average_starting_value_z = int(sum(xela_sensor1_data_z[0]) / len(xela_sensor1_data_z[0]))
+	xela_sensor1_offset_x = [xela_sensor1_average_starting_value_x - tactile_starting_value for tactile_starting_value in xela_sensor1_data_x[0]]
+	xela_sensor1_offset_y = [xela_sensor1_average_starting_value_y - tactile_starting_value for tactile_starting_value in xela_sensor1_data_y[0]]
+	xela_sensor1_offset_z = [xela_sensor1_average_starting_value_z - tactile_starting_value for tactile_starting_value in xela_sensor1_data_z[0]]
+	# xela_sensor2_average_starting_value_x = int(sum(xela_sensor2_data_x[0]) / len(xela_sensor2_data_x[0]))
+	# xela_sensor2_average_starting_value_y = int(sum(xela_sensor2_data_y[0]) / len(xela_sensor2_data_y[0]))
+	# xela_sensor2_average_starting_value_z = int(sum(xela_sensor2_data_z[0]) / len(xela_sensor2_data_z[0]))
+	# xela_sensor2_offset_x = [xela_sensor2_average_starting_value_x - tactile_starting_value for tactile_starting_value in xela_sensor2_data_x[0]]
+	# xela_sensor2_offset_y = [xela_sensor2_average_starting_value_y - tactile_starting_value for tactile_starting_value in xela_sensor2_data_y[0]]
+	# xela_sensor2_offset_z = [xela_sensor2_average_starting_value_z - tactile_starting_value for tactile_starting_value in xela_sensor2_data_z[0]]
 
 	# normalise for each force:
 	min_x_sensor1, max_x_sensor1 = (min([min(x) for x in xela_sensor1_data_x]), max([max(x) for x in xela_sensor1_data_x]))
 	min_y_sensor1, max_y_sensor1 = (min([min(y) for y in xela_sensor1_data_y]), max([max(y) for y in xela_sensor1_data_y]))
 	min_z_sensor1, max_z_sensor1 = (min([min(z) for z in xela_sensor1_data_z]), max([max(z) for z in xela_sensor1_data_z]))
-
-	min_x_sensor2, max_x_sensor2 = (min([min(x) for x in xela_sensor2_data_x]), max([max(x) for x in xela_sensor2_data_x]))
-	min_y_sensor2, max_y_sensor2 = (min([min(y) for y in xela_sensor2_data_y]), max([max(y) for y in xela_sensor2_data_y]))
-	min_z_sensor2, max_z_sensor2 = (min([min(z) for z in xela_sensor2_data_z]), max([max(z) for z in xela_sensor2_data_z]))
+	# min_x_sensor2, max_x_sensor2 = (min([min(x) for x in xela_sensor2_data_x]), max([max(x) for x in xela_sensor2_data_x]))
+	# min_y_sensor2, max_y_sensor2 = (min([min(y) for y in xela_sensor2_data_y]), max([max(y) for y in xela_sensor2_data_y]))
+	# min_z_sensor2, max_z_sensor2 = (min([min(z) for z in xela_sensor2_data_z]), max([max(z) for z in xela_sensor2_data_z]))
 
 	for time_step in range(len(xela_sensor1_data_x)):
+		xela_sensor2_sample_x_test = [offset+real_value for offset, real_value in zip(xela_sensor1_offset_x, xela_sensor1_data_x[time_step])]
+		xela_sensor2_sample_y_test = [offset+real_value for offset, real_value in zip(xela_sensor1_offset_y, xela_sensor1_data_y[time_step])]
+		xela_sensor2_sample_z_test = [offset+real_value for offset, real_value in zip(xela_sensor1_offset_z, xela_sensor1_data_z[time_step])]
+		# xela_sensor2_sample_x_test = [offset+real_value for offset, real_value in zip(xela_sensor2_offset_x, xela_sensor2_data_x[time_step])]
+		# xela_sensor2_sample_y_test = [offset+real_value for offset, real_value in zip(xela_sensor2_offset_y, xela_sensor2_data_y[time_step])]
+		# xela_sensor2_sample_z_test = [offset+real_value for offset, real_value in zip(xela_sensor2_offset_z, xela_sensor2_data_z[time_step])]
 		for i in range(np.asarray(xela_sensor1_data_x).shape[1]):
-			xela_sensor1_data_x[time_step][i] = (xela_sensor1_data_x[time_step][i] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1) 
-			xela_sensor1_data_y[time_step][i] = (xela_sensor1_data_y[time_step][i] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1) 
-			xela_sensor1_data_z[time_step][i] = (xela_sensor1_data_z[time_step][i] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)
-
-			xela_sensor2_data_x[time_step][i] = (xela_sensor2_data_x[time_step][i] - min_x_sensor2) / (max_x_sensor2 - min_x_sensor2) 
-			xela_sensor2_data_y[time_step][i] = (xela_sensor2_data_y[time_step][i] - min_y_sensor2) / (max_y_sensor2 - min_y_sensor2) 
-			xela_sensor2_data_z[time_step][i] = (xela_sensor2_data_z[time_step][i] - min_z_sensor2) / (max_z_sensor2 - min_z_sensor2)
+			xela_sensor1_data_x[time_step][i] = (xela_sensor2_sample_x_test[i] - min_x_sensor1) / (max_x_sensor1 - min_x_sensor1) 
+			xela_sensor1_data_y[time_step][i] = (xela_sensor2_sample_y_test[i] - min_y_sensor1) / (max_y_sensor1 - min_y_sensor1) 
+			xela_sensor1_data_z[time_step][i] = (xela_sensor2_sample_z_test[i] - min_z_sensor1) / (max_z_sensor1 - min_z_sensor1)
+			# xela_sensor2_data_x[time_step][i] = (xela_sensor2_sample_x_test[i] - min_x_sensor2) / (max_x_sensor2 - min_x_sensor2) 
+			# xela_sensor2_data_y[time_step][i] = (xela_sensor2_sample_y_test[i] - min_y_sensor2) / (max_y_sensor2 - min_y_sensor2) 
+			# xela_sensor2_data_z[time_step][i] = (xela_sensor2_sample_z_test[i] - min_z_sensor2) / (max_z_sensor2 - min_z_sensor2)
 
 
 	# create images from xela_data
-	xela_images_1, xela_images_2 = [], []
-	for time_step in range(len(xela_sensor1_data_x)):
-		xela_images_1.append(create_image(xela_sensor1_data_x[time_step], xela_sensor1_data_y[time_step], xela_sensor1_data_z[time_step]))
-		xela_images_2.append(create_image(xela_sensor2_data_x[time_step], xela_sensor2_data_y[time_step], xela_sensor2_data_z[time_step]))
+	if SAVE_IMAGES == True:
+		xela_images_1, xela_images_2 = [], []
+		for time_step in range(len(xela_sensor1_data_x)):
+			xela_images_1.append(create_image(xela_sensor1_data_x[time_step], xela_sensor1_data_y[time_step], xela_sensor1_data_z[time_step]))
+			# xela_images_2.append(create_image(xela_sensor2_data_x[time_step], xela_sensor2_data_y[time_step], xela_sensor2_data_z[time_step]))
 
 	####################################### Format data into time series ###########################################
-	# robot_data = []
-	# xela_1_data = []
-	# xela_2_data = []
-	# xela_1_labels = []
-	# xela_2_labels = []
-	# experiment_data = []
-	# time_step_data = []
-	# xela_image_1_data = []
-	# xela_image_2_data = []
-
 	for sample in range(0, len(ee_position_x) - sequence_length):
-		robot_data_sequence, xela_1_sequence_data, xela_2_sequence_data, experiment_data_sequence, time_step_data_sequence, xela_image_1_data_sequence, xela_image_2_data_sequence = [], [], [], [], [], [], []
+		robot_data_euler_sequence, robot_data_quat_sequence, xela_1_sequence_data, xela_2_sequence_data, experiment_data_sequence, time_step_data_sequence, xela_image_1_data_sequence, xela_image_2_data_sequence = [], [], [], [], [], [], [], []
 		for t in range(0, sequence_length):
 			robot_data_euler_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_x[sample+t], ee_orientation_y[sample+t], ee_orientation_z[sample+t]])
 			robot_data_quat_sequence.append([ee_position_x[sample+t], ee_position_y[sample+t], ee_position_z[sample+t], ee_orientation_quat_x[sample+t], ee_orientation_quat_y[sample+t], ee_orientation_quat_z[sample+t], ee_orientation_quat_w[sample+t]])
 			xela_1_sequence_data.append(np.column_stack((xela_sensor1_data_x[sample+t], xela_sensor1_data_y[sample+t], xela_sensor1_data_z[sample+t])).flatten())
-			xela_2_sequence_data.append(np.column_stack((xela_sensor2_data_x[sample+t], xela_sensor2_data_y[sample+t], xela_sensor2_data_z[sample+t])).flatten())
-			xela_image_1_data_sequence.append(xela_images_1[sample+t])
-			xela_image_2_data_sequence.append(xela_images_2[sample+t])
+			# xela_2_sequence_data.append(np.column_stack((xela_sensor2_data_x[sample+t], xela_sensor2_data_y[sample+t], xela_sensor2_data_z[sample+t])).flatten())
+			if SAVE_IMAGES == True:
+				xela_image_1_data_sequence.append(xela_images_1[sample+t])
+				# xela_image_2_data_sequence.append(xela_images_2[sample+t])
 			experiment_data_sequence.append(experiment_number)
 			time_step_data_sequence.append(sample+t)
 		# robot_data.append(robot_data_sequence)
@@ -212,8 +223,9 @@ for experiment_number in tqdm(range(len(files))):
 		np.save(out_dir + 'robot_data_quat_' + str(index_to_save), robot_data_quat_sequence)
 		np.save(out_dir + 'xela_1_data_' + str(index_to_save), xela_1_sequence_data)
 		np.save(out_dir + 'xela_2_data_' + str(index_to_save), xela_2_sequence_data)
-		np.save(out_dir + 'xela_1_image_data_' + str(index_to_save), xela_image_1_data_sequence)
-		np.save(out_dir + 'xela_2_image_data_' + str(index_to_save), xela_image_2_data_sequence)
+		if SAVE_IMAGES == True:
+			np.save(out_dir + 'xela_1_image_data_' + str(index_to_save), xela_image_1_data_sequence)
+			# np.save(out_dir + 'xela_2_image_data_' + str(index_to_save), xela_image_2_data_sequence)
 		np.save(out_dir + 'experiment_number_' + str(index_to_save), experiment_data_sequence)
 		np.save(out_dir + 'time_step_data_' + str(index_to_save), time_step_data_sequence)
 		ref = []
@@ -221,8 +233,9 @@ for experiment_number in tqdm(range(len(files))):
 		ref.append('robot_data_quat_' + str(index_to_save) + '.npy')
 		ref.append('xela_1_data_' + str(index_to_save) + '.npy')
 		ref.append('xela_2_data_' + str(index_to_save) + '.npy')
-		ref.append('xela_1_image_data_' + str(index_to_save) + '.npy')
-		ref.append('xela_2_image_data_' + str(index_to_save) + '.npy')
+		if SAVE_IMAGES == True:
+			ref.append('xela_1_image_data_' + str(index_to_save) + '.npy')
+			# ref.append('xela_2_image_data_' + str(index_to_save) + '.npy')
 		ref.append('experiment_number_' + str(index_to_save) + '.npy')
 		ref.append('time_step_data_' + str(index_to_save) + '.npy')
 		path_file.append(ref)
@@ -230,7 +243,10 @@ for experiment_number in tqdm(range(len(files))):
 
 with open(out_dir + '/map.csv', 'w') as csvfile:
 	writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
-	writer.writerow(['robot_data_path_euler', 'robot_data_path_quat', 'xela_1_data_path', 'xela_2_data_path', 'xela_1_image_data_path', 'xela_2_image_data_path', 'experiment_number', 'time_steps'])
+	if SAVE_IMAGES == True:
+		writer.writerow(['robot_data_path_euler', 'robot_data_path_quat', 'xela_1_data_path', 'xela_2_data_path', 'xela_1_image_data_path', 'experiment_number', 'time_steps'])
+	if SAVE_IMAGES == False:
+		writer.writerow(['robot_data_path_euler', 'robot_data_path_quat', 'xela_1_data_path', 'xela_2_data_path', 'experiment_number', 'time_steps'])
 	for row in path_file:
 		writer.writerow(row)
 
