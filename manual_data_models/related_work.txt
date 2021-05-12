@@ -1,0 +1,57 @@
+The type of the tactile signals which are currently used in research and commercial groups can be over-viewed in [Recent progress in tactile sensing and sensors for robotic manipulation, Tactile Sensing for Robotic Applications]. Here the focus is on the methods used to model or learn tactile behaviour for slip detection/prediction and robot control. A wide spectrum of the works are related to analytical model based approaches in the literature of the tactile sensing for manipulation with objectives including slip detection/prediction or robot control.
+--------- overview:
+
+--------- tactile sensors:
+[Biomimetic tactile sensors] overviews the research items which utilised spike trains analysis on tactile signals which are a method inspired by the real neuronal system. 
+
+Vision-based tactile sensors [GelSight: High-Resolution Robot, GelSlim: A High-Resolution, Development of a tactile sensor based on biologically inspired edge encoding] use the motion patterns of the markers on the sensor for slip event detection [Slip Detection With a Biomimetic Tactile Sensor, Dense Tactile Force Estimation using GelSlim]. Which is inspired by human finger tips sensing when slippage occurs where the normal force is decreased first in peripheral area and then in the centre of the finger tip.
+
+[Development of intelligent robot hand using proximity, Robotic grasp control with high-resolution combined ] integrated proximity sensing in their tactile sensors for better tactile exploration and more stable grasping.
+
+--------- Object feature extraction:(Friction estimation - texture classification)
+[ANALYTIC] In estimating friction coefficient of the object surface for slip detection [Slip  Detection  and  Control  Using Tactile and Force Sensors, Tactile Dexterity: Manipulation Primitives ] use friction cone by measuring the angle between the resultant force on the surface and the normal or shear components.
+
+[ANALYTIC] Friction estimation by tactile sensing approaches is also overviewed by [Tactile Sensors for Friction Estimation].
+
+[DNN] [Deep Visuo-Tactile Learning] combine encoded tactile features with images from object surface for texture classification using auto-encoders (AE) and support vector machine (SVM).
+
+[DNN] [ViTac: Feature Sharing between Vision and Tactile] addresses a similar problem in texture recognition by doing maximum covariance analysis in the latent space between tactile and visual features.
+
+--------- Grasp Stability Analysis:
+[ANALYTIC] In robotic grasping, a more recent work [Simultaneous Tactile Exploration and Grasp Refinement] applies a probabilistic regression on tactile data with having point cloud as other sensing modality. [Stable grasping under pose uncertainty] uses the bag of words representation for contact points in grasping achieved from tactile sensors for grasp stability estimation.
+
+--------- slip detection:
+[ANALYTIC] Numerical derivatives of normal and shear tactile forces are used as hand designed tactile features in [ Action-intention-based  grasp  control] for object slippage detection. 
+
+[DNN] [Learning Spatio Temporal Tactile Features] classify the direction of slip into seven categories by using ConvLSTM cells on tactile images.
+
+--------- Slip prediction:
+[ANALYTIC] [Slip Prediction using Hidden Markov Models] after applying PCA on tactile data, uses Hidden Markov Models for slip prediction. 
+
+--------- Tactile prediction:
+[DNN] Applying GANs for tactile readings prediction [Prediction of Tactile Perception from Vision] focuses on  mapping between pointcloud and grasp pose data to tactile features. 
+
+--------- Statements: 
+There are two main shortcomings about the model based analytical approaches. First, they are usually limited to the type of the sensor and gripper and the known object characteristics are required in advance, and secondly, none of the research items in these area focus on modelling the dynamic behaviour of the tactile system. If a model can learn tactile dynamics, it can be efficiently used to predict future behaviour of contact when performing the manipulative task by the robot.
+
+With the second rise of deep learning various research tried to exploit the DNNs as a powerful function on the tactile data. As such, many focused on fusing tactile data with other sensory information for purposes such as texture recognition, grasp stability estimation, and robot control. 
+
+
+
+[DNN]????????? [Making Sense of Vision and Touch] proposes a novel AE structure which combines RGB, depth, Force/Torque, and robot proprioception data in latent space and construct optical flow masked and binary contact output. The latent vector is used for an optimiser to acquire a policy for a peg in hole task execution.
+
+
+
+By 2D touch scanning with an opto-force sensor and particle filtering [Learning to Grasp without Seeing] uses pure tactile data to locate an object in an empty box and achieve a policy for a stable grasp. Tactile feature dimensionality is reduced by a recurrent AE for easier grasp stability estimation problem.
+
+Having AEs for dimensionality reduction [Learning Latent Space Dynamics for Tactile Servoing] uses multi-dimensional scaling for tactile servoing. 
+
+Having two GelSlim sensors on two robot hands [Tactile Dexterity: Manipulation] divides each manipulation task to four types of manipulation primitives and using friction cone slip prediction is used to regenerate robot trajectory.
+
+In a more similar work to ours, [Manipulation by Feel] exploits previously developed video prediction model on tactile image sequences for a deep model predictive control architecture. The goal tactile image is given as an input and the MPC moves the object to reach the goal tactile image in its readings. The four considered tasks do not include grasping an object and only move the objects in 2D plane with a CNC machine which has the GelSight sensor mounted.
+
+Considering the above mentioned works, while the DNNs which tactile data input are exploited for tasks including slip detection, grasp stability estimation, stable grasp policy learning, data fusion, grip force control, and robot motion control, only a few [] learns the forward dynamic of a tactile system to predict its behaviour in a sufficiently long time horizon for robot control.
+
+We propose an analysis in which a model combines past time window tactile readings and robot state and based on the future time window robot action, the tactile readings will be prediction. The pipeline can be used for different types of tactile data including visioan and non-vision tactile sensors and also the trained forward model which learnt the dynamic behaviour of the tactile reading, can be used in different control architectures including tactile Reinforcement Learning controllers.
+
+The structure of the rest of this letter is as follow. Section3 explains the theoretical grounding for the deep tactile forward model. Section4 presents the dataset collection and experimental setup for the tests. Section5 analyses the results with standard metrics for the prediction. And finally, section6 overviews the discussion and future plans.
